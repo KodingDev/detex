@@ -47,7 +47,15 @@ LIBRARY_MODULE_OBJECTS = bptc-tables.o bits.o clamp.o convert.o dds.o decompress
 	decompress-bptc-float.o decompress-etc.o decompress-eac.o decompress-rgtc.o division-tables.o \
 	file-info.o half-float.o hdr.o ktx.o misc.o raw.o texture.o
 LIBRARY_HEADER_FILES = detex.h
-TEST_PROGRAMS = detex-validate detex-view detex-convert
+
+# Check for GTK availability
+HAS_GTK := $(shell pkg-config --exists gtk+-3.0 2>/dev/null && echo yes || echo no)
+
+# Define test programs based on what's available
+TEST_PROGRAMS = detex-convert
+ifeq ($(HAS_GTK), yes)
+TEST_PROGRAMS += detex-validate detex-view
+endif
 
 default : library
 
@@ -82,15 +90,22 @@ install_shared : $(LIBRARY_OBJECT)
 install_static : $(LIBRARY_OBJECT)
 	install -m 0644 $(LIBRARY_OBJECT) $(STATIC_LIB_DIR)/$(LIBRARY_OBJECT)
 
+ifeq ($(HAS_GTK), yes)
 install-programs : detex-view detex-convert
 	install -m 0755 detex-view $(PROGRAM_INSTALL_DIR)/detex-view
 	install -m 0755 detex-convert $(PROGRAM_INSTALL_DIR)/detex-convert
+else
+install-programs : detex-convert
+	install -m 0755 detex-convert $(PROGRAM_INSTALL_DIR)/detex-convert
+endif
 
+ifeq ($(HAS_GTK), yes)
 detex-validate : validate.o $(LIBRARY_OBJECT)
 	gcc validate.o -o detex-validate $(LIBRARY_OBJECT) $(LIBRARY_LIBS) `pkg-config --libs gtk+-3.0`
 
 detex-view : detex-view.o $(LIBRARY_OBJECT)
 	gcc detex-view.o -o detex-view $(LIBRARY_OBJECT) $(LIBRARY_LIBS) `pkg-config --libs gtk+-3.0`
+endif
 
 detex-convert : detex-convert.o png.o $(LIBRARY_OBJECT)
 	gcc detex-convert.o png.o -o detex-convert $(LIBRARY_OBJECT) $(LIBRARY_LIBS) `pkg-config --libs libpng`
@@ -109,11 +124,13 @@ clean :
 .c.o :
 	gcc -c $(CFLAGS_LIB) $< -o $@
 
+ifeq ($(HAS_GTK), yes)
 validate.o : validate.c
 	gcc -c $(CFLAGS_TEST) $< -o $@ `pkg-config --cflags --libs gtk+-3.0`
 
 detex-view.o : detex-view.c
 	gcc -c $(CFLAGS_TEST) $< -o $@ `pkg-config --cflags --libs gtk+-3.0`
+endif
 
 detex-convert.o : detex-convert.c
 	gcc -c $(CFLAGS_TEST) $< -o $@
@@ -130,8 +147,10 @@ dep :
         # Make sure Makefile.conf and Makefile are dependency for all modules.
 	for x in $(LIBRARY_MODULE_OBJECTS); do \
 	echo $$x : Makefile.conf Makefile >> .depend; done
+ifeq ($(HAS_GTK), yes)
 	gcc -MM $(CFLAGS_TEST) validate.c >> .depend
 	gcc -MM $(CFLAGS_TEST) detex-view.c >> .depend
+endif
 	gcc -MM $(CFLAGS_TEST) detex-convert.c png.c >> .depend
 
 include .depend

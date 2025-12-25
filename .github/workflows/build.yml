@@ -1,0 +1,182 @@
+name: Build
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build on ${{ matrix.os }} (${{ matrix.arch }})
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Linux x86_64
+          - os: linux
+            runner: ubuntu-latest
+            arch: x86_64
+            cc: gcc
+            cxx: g++
+
+          # Linux ARM64
+          - os: linux
+            runner: ubuntu-latest
+            arch: aarch64
+            cc: gcc
+            cxx: g++
+
+          # macOS x86_64 (Intel)
+          - os: macos
+            runner: macos-13
+            arch: x86_64
+            cc: gcc
+            cxx: g++
+
+          # macOS ARM64 (Apple Silicon)
+          - os: macos
+            runner: macos-latest
+            arch: arm64
+            cc: gcc
+            cxx: g++
+
+          # Windows x86_64
+          - os: windows
+            runner: windows-latest
+            arch: x86_64
+            cc: gcc
+            cxx: g++
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install dependencies (Linux x86_64)
+        if: matrix.os == 'linux' && matrix.arch == 'x86_64'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential libgtk-3-dev libpng-dev pkg-config
+
+      - name: Install dependencies (Linux ARM64)
+        if: matrix.os == 'linux' && matrix.arch == 'aarch64'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
+
+      - name: Install dependencies (macOS)
+        if: matrix.os == 'macos'
+        run: |
+          brew install gtk+3 libpng pkg-config
+
+      - name: Setup MSYS2 (Windows)
+        if: matrix.os == 'windows'
+        uses: msys2/setup-msys2@v2
+        with:
+          msys2-version: latest
+          update: true
+          install: >-
+            base-devel
+            mingw-w64-x86_64-gcc
+            mingw-w64-x86_64-libpng
+            mingw-w64-x86_64-pkg-config
+            make
+
+      - name: Build library (Linux x86_64)
+        if: matrix.os == 'linux' && matrix.arch == 'x86_64'
+        run: |
+          make library LIBRARY_CONFIGURATION=SHARED
+          make programs LIBRARY_CONFIGURATION=SHARED
+
+      - name: Build library (Linux ARM64)
+        if: matrix.os == 'linux' && matrix.arch == 'aarch64'
+        run: |
+          # Cross-compile for ARM64
+          make library LIBRARY_CONFIGURATION=SHARED CC=aarch64-linux-gnu-gcc CXX=aarch64-linux-gnu-g++
+
+      - name: Build library (macOS)
+        if: matrix.os == 'macos'
+        run: |
+          make library LIBRARY_CONFIGURATION=SHARED
+          make programs LIBRARY_CONFIGURATION=SHARED
+
+      - name: Build library (Windows)
+        if: matrix.os == 'windows'
+        shell: msys2 {0}
+        run: |
+          make library LIBRARY_CONFIGURATION=SHARED
+          make programs LIBRARY_CONFIGURATION=SHARED || echo "Some programs may not build without GTK"
+
+      - name: Upload artifacts (Linux x86_64)
+        if: matrix.os == 'linux' && matrix.arch == 'x86_64'
+        uses: actions/upload-artifact@v4
+        with:
+          name: detex-${{ matrix.os }}-${{ matrix.arch }}
+          path: |
+            libdetex.so.*
+            detex-*
+            !detex-*.o
+            detex.h
+
+      - name: Upload artifacts (Linux ARM64)
+        if: matrix.os == 'linux' && matrix.arch == 'aarch64'
+        uses: actions/upload-artifact@v4
+        with:
+          name: detex-${{ matrix.os }}-${{ matrix.arch }}
+          path: |
+            libdetex.so.*
+            detex.h
+
+      - name: Upload artifacts (macOS)
+        if: matrix.os == 'macos'
+        uses: actions/upload-artifact@v4
+        with:
+          name: detex-${{ matrix.os }}-${{ matrix.arch }}
+          path: |
+            libdetex.so.*
+            detex-*
+            !detex-*.o
+            detex.h
+
+      - name: Upload artifacts (Windows)
+        if: matrix.os == 'windows'
+        uses: actions/upload-artifact@v4
+        with:
+          name: detex-${{ matrix.os }}-${{ matrix.arch }}
+          path: |
+            libdetex.so.*
+            *.dll
+            detex-*.exe
+            detex.h
+
+  create-release-archives:
+    name: Create release archives
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Create archives
+        run: |
+          cd artifacts
+          for dir in detex-*; do
+            if [ -d "$dir" ]; then
+              tar -czf "${dir}.tar.gz" -C "$dir" .
+              zip -r "${dir}.zip" "$dir"
+            fi
+          done
+
+      - name: Upload release archives
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-archives
+          path: |
+            artifacts/*.tar.gz
+            artifacts/*.zip
