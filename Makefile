@@ -15,8 +15,16 @@ OPTCFLAGS += -ggdb
 else
 OPTCFLAGS += -Ofast -ffast-math
 endif
-# Use the 1999 ISO C standard with POSIX.1-2008 definitions.
-CFLAGS = -std=c99 -D_POSIX_C_SOURCE=200809L -Wall -Wno-maybe-uninitialized -pipe -I. $(OPTCFLAGS)
+
+# Platform-specific flags
+UNAME_S := $(shell uname -s)
+ifeq ($(UNAME_S),Darwin)
+    # macOS: Use -D_DARWIN_C_SOURCE to get POSIX extensions
+    CFLAGS = -std=c99 -D_DARWIN_C_SOURCE -Wall -Wno-maybe-uninitialized -pipe -I. $(OPTCFLAGS)
+else
+    # Linux and others: Use POSIX.1-2008 definitions
+    CFLAGS = -std=c99 -D_POSIX_C_SOURCE=200809L -Wall -Wno-maybe-uninitialized -pipe -I. $(OPTCFLAGS)
+endif
 
 ifeq ($(LIBRARY_CONFIGURATION), SHARED)
 # Shared library.
@@ -147,11 +155,6 @@ dep :
         # Make sure Makefile.conf and Makefile are dependency for all modules.
 	for x in $(LIBRARY_MODULE_OBJECTS); do \
 	echo $$x : Makefile.conf Makefile >> .depend; done
-ifeq ($(HAS_GTK), yes)
-	gcc -MM $(CFLAGS_TEST) validate.c >> .depend
-	gcc -MM $(CFLAGS_TEST) detex-view.c >> .depend
-endif
-	gcc -MM $(CFLAGS_TEST) detex-convert.c png.c >> .depend
 
 include .depend
 
