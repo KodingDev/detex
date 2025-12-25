@@ -106,7 +106,7 @@ jobs:
         with:
           name: detex-${{ matrix.os }}-${{ matrix.arch }}
           path: |
-            libdetex.so.*
+            libdetex*.so
             detex.h
 
       - name: Upload artifacts (Linux ARM64)
@@ -115,7 +115,7 @@ jobs:
         with:
           name: detex-${{ matrix.os }}-${{ matrix.arch }}
           path: |
-            libdetex.so.*
+            libdetex*.so
             detex.h
 
       - name: Upload artifacts (macOS)

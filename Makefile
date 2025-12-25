@@ -96,13 +96,13 @@ $(LIBRARY_NAME).$(VERSION).dylib : $(LIBRARY_MODULE_OBJECTS) $(LIBRARY_HEADER_FI
 	@echo Run '(sudo) make install to install.'
 else ifeq ($(OS),Windows_NT)
 # Windows shared library (.dll)
-$(LIBRARY_NAME)-$(MAJOR_VERSION).dll : $(LIBRARY_MODULE_OBJECTS) $(LIBRARY_HEADER_FILES)
+$(LIBRARY_NAME)-$(VERSION).dll : $(LIBRARY_MODULE_OBJECTS) $(LIBRARY_HEADER_FILES)
 	g++ -shared -Wl,--out-implib,$(LIBRARY_IMPORT_LIB) -fPIC -o $(LIBRARY_OBJECT) \
 	$(LIBRARY_MODULE_OBJECTS) $(LIBRARY_LIBS)
 	@echo Run 'make install' to install.
 else
 # Linux shared library (.so)
-$(LIBRARY_NAME).so.$(VERSION) : $(LIBRARY_MODULE_OBJECTS) $(LIBRARY_HEADER_FILES)
+$(LIBRARY_NAME).$(VERSION).so : $(LIBRARY_MODULE_OBJECTS) $(LIBRARY_HEADER_FILES)
 	g++ -shared -Wl,-soname,$(LIBRARY_SONAME) -fPIC -o $(LIBRARY_OBJECT) \
 	$(LIBRARY_MODULE_OBJECTS) $(LIBRARY_LIBS)
 	@echo Run '(sudo) make install to install.'
@@ -158,10 +158,10 @@ clean :
 	rm -f detex-view.o
 	rm -f detex-convert.o
 	rm -f png.o
-	rm -f $(LIBRARY_NAME).so.$(VERSION)
+	rm -f $(LIBRARY_NAME).$(VERSION).so
 	rm -f $(LIBRARY_NAME).$(VERSION).dylib
 	rm -f $(LIBRARY_NAME).dylib
-	rm -f $(LIBRARY_NAME)-$(MAJOR_VERSION).dll
+	rm -f $(LIBRARY_NAME)-$(VERSION).dll
 	rm -f $(LIBRARY_NAME).dll.a
 	rm -f $(LIBRARY_NAME).a
 	rm -f $(LIBRARY_NAME)_dbg.a
