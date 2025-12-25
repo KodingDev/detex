@@ -20,7 +20,7 @@ endif
 UNAME_S := $(shell uname -s)
 ifeq ($(UNAME_S),Darwin)
     # macOS: Use -D_DARWIN_C_SOURCE to get POSIX extensions
-    CFLAGS = -std=c99 -D_DARWIN_C_SOURCE -Wall -Wno-maybe-uninitialized -pipe -I. $(OPTCFLAGS)
+    CFLAGS = -std=c99 -D_DARWIN_C_SOURCE -Wall -pipe -I. $(OPTCFLAGS)
 else
     # Linux and others: Use POSIX.1-2008 definitions
     CFLAGS = -std=c99 -D_POSIX_C_SOURCE=200809L -Wall -Wno-maybe-uninitialized -pipe -I. $(OPTCFLAGS)
@@ -28,7 +28,17 @@ endif
 
 ifeq ($(LIBRARY_CONFIGURATION), SHARED)
 # Shared library.
-LIBRARY_OBJECT = $(LIBRARY_NAME).so.$(VERSION)
+ifeq ($(UNAME_S),Darwin)
+    # macOS uses .dylib extension
+    LIBRARY_OBJECT = $(LIBRARY_NAME).$(VERSION).dylib
+    LIBRARY_SONAME = $(LIBRARY_NAME).$(SO_VERSION).dylib
+    LIBRARY_LINK_NAME = $(LIBRARY_NAME).dylib
+else
+    # Linux uses .so extension
+    LIBRARY_OBJECT = $(LIBRARY_NAME).so.$(VERSION)
+    LIBRARY_SONAME = $(LIBRARY_NAME).so.$(SO_VERSION)
+    LIBRARY_LINK_NAME = $(LIBRARY_NAME).so
+endif
 INSTALL_TARGET = install_shared
 LIBRARY_DEPENDENCY =
 TEST_PROGRAM_LFLAGS = -l$(SHORT_LIBRARY_NAME)
@@ -71,10 +81,20 @@ library : $(LIBRARY_OBJECT)
 
 programs : $(TEST_PROGRAMS)
 
-$(LIBRARY_NAME).so.$(VERSION) : $(LIBRARY_MODULE_OBJECTS) $(LIBRARY_HEADER_FILES)
-	g++ -shared -Wl,-soname,$(LIBRARY_NAME).so.$(SO_VERSION) -fPIC -o $(LIBRARY_OBJECT) \
-$(LIBRARY_MODULE_OBJECTS) $(LIBRARY_LIBS)
+ifeq ($(UNAME_S),Darwin)
+# macOS shared library (.dylib)
+$(LIBRARY_NAME).$(VERSION).dylib : $(LIBRARY_MODULE_OBJECTS) $(LIBRARY_HEADER_FILES)
+	g++ -dynamiclib -install_name $(SHARED_LIB_DIR)/$(LIBRARY_SONAME) \
+	-current_version $(VERSION) -compatibility_version $(SO_VERSION) \
+	-fPIC -o $(LIBRARY_OBJECT) $(LIBRARY_MODULE_OBJECTS) $(LIBRARY_LIBS)
 	@echo Run '(sudo) make install to install.'
+else
+# Linux shared library (.so)
+$(LIBRARY_NAME).so.$(VERSION) : $(LIBRARY_MODULE_OBJECTS) $(LIBRARY_HEADER_FILES)
+	g++ -shared -Wl,-soname,$(LIBRARY_SONAME) -fPIC -o $(LIBRARY_OBJECT) \
+	$(LIBRARY_MODULE_OBJECTS) $(LIBRARY_LIBS)
+	@echo Run '(sudo) make install to install.'
+endif
 
 $(LIBRARY_NAME).a : $(LIBRARY_MODULE_OBJECTS) $(LIBRARY_HEADER_FILES)
 	ar r $(LIBRARY_OBJECT) $(LIBRARY_MODULE_OBJECTS)
@@ -93,7 +113,8 @@ install_headers : $(LIBRARY_HEADER_FILES)
 
 install_shared : $(LIBRARY_OBJECT)
 	install -m 0644 $(LIBRARY_OBJECT) $(SHARED_LIB_DIR)/$(LIBRARY_OBJECT)
-	ln -sf $(SHARED_LIB_DIR)/$(LIBRARY_OBJECT) $(SHARED_LIB_DIR)/$(LIBRARY_NAME).so
+	ln -sf $(LIBRARY_OBJECT) $(SHARED_LIB_DIR)/$(LIBRARY_SONAME)
+	ln -sf $(LIBRARY_SONAME) $(SHARED_LIB_DIR)/$(LIBRARY_LINK_NAME)
 
 install_static : $(LIBRARY_OBJECT)
 	install -m 0644 $(LIBRARY_OBJECT) $(STATIC_LIB_DIR)/$(LIBRARY_OBJECT)
@@ -126,6 +147,8 @@ clean :
 	rm -f detex-convert.o
 	rm -f png.o
 	rm -f $(LIBRARY_NAME).so.$(VERSION)
+	rm -f $(LIBRARY_NAME).$(VERSION).dylib
+	rm -f $(LIBRARY_NAME).dylib
 	rm -f $(LIBRARY_NAME).a
 	rm -f $(LIBRARY_NAME)_dbg.a
 

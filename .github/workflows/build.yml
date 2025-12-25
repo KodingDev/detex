@@ -125,7 +125,7 @@ jobs:
         with:
           name: detex-${{ matrix.os }}-${{ matrix.arch }}
           path: |
-            libdetex.so.*
+            libdetex*.dylib
             detex.h
 
       - name: Upload artifacts (Windows)
