@@ -33,10 +33,16 @@ ifeq ($(UNAME_S),Darwin)
     LIBRARY_OBJECT = $(LIBRARY_NAME).$(VERSION).dylib
     LIBRARY_SONAME = $(LIBRARY_NAME).$(SO_VERSION).dylib
     LIBRARY_LINK_NAME = $(LIBRARY_NAME).dylib
+else ifeq ($(OS),Windows_NT)
+    # Windows uses .dll extension
+    LIBRARY_OBJECT = $(LIBRARY_NAME)-$(VERSION).dll
+    LIBRARY_SONAME = $(LIBRARY_NAME)-$(SO_VERSION).dll
+    LIBRARY_LINK_NAME = $(LIBRARY_NAME).dll
+    LIBRARY_IMPORT_LIB = $(LIBRARY_NAME).dll.a
 else
     # Linux uses .so extension
-    LIBRARY_OBJECT = $(LIBRARY_NAME).so.$(VERSION)
-    LIBRARY_SONAME = $(LIBRARY_NAME).so.$(SO_VERSION)
+    LIBRARY_OBJECT = $(LIBRARY_NAME).$(VERSION).so
+    LIBRARY_SONAME = $(LIBRARY_NAME).$(SO_VERSION).so
     LIBRARY_LINK_NAME = $(LIBRARY_NAME).so
 endif
 INSTALL_TARGET = install_shared
@@ -88,6 +94,12 @@ $(LIBRARY_NAME).$(VERSION).dylib : $(LIBRARY_MODULE_OBJECTS) $(LIBRARY_HEADER_FI
 	-current_version $(VERSION) -compatibility_version $(SO_VERSION) \
 	-fPIC -o $(LIBRARY_OBJECT) $(LIBRARY_MODULE_OBJECTS) $(LIBRARY_LIBS)
 	@echo Run '(sudo) make install to install.'
+else ifeq ($(OS),Windows_NT)
+# Windows shared library (.dll)
+$(LIBRARY_NAME)-$(MAJOR_VERSION).dll : $(LIBRARY_MODULE_OBJECTS) $(LIBRARY_HEADER_FILES)
+	g++ -shared -Wl,--out-implib,$(LIBRARY_IMPORT_LIB) -fPIC -o $(LIBRARY_OBJECT) \
+	$(LIBRARY_MODULE_OBJECTS) $(LIBRARY_LIBS)
+	@echo Run 'make install' to install.
 else
 # Linux shared library (.so)
 $(LIBRARY_NAME).so.$(VERSION) : $(LIBRARY_MODULE_OBJECTS) $(LIBRARY_HEADER_FILES)
@@ -149,6 +161,8 @@ clean :
 	rm -f $(LIBRARY_NAME).so.$(VERSION)
 	rm -f $(LIBRARY_NAME).$(VERSION).dylib
 	rm -f $(LIBRARY_NAME).dylib
+	rm -f $(LIBRARY_NAME)-$(MAJOR_VERSION).dll
+	rm -f $(LIBRARY_NAME).dll.a
 	rm -f $(LIBRARY_NAME).a
 	rm -f $(LIBRARY_NAME)_dbg.a
 

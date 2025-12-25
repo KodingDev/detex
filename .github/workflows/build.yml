@@ -70,7 +70,6 @@ jobs:
         if: matrix.os == 'windows'
         uses: msys2/setup-msys2@v2
         with:
-          msys2-version: latest
           update: true
           install: >-
             base-devel
@@ -134,36 +133,6 @@ jobs:
         with:
           name: detex-${{ matrix.os }}-${{ matrix.arch }}
           path: |
-            libdetex.so.*
-            *.dll
+            libdetex-*.dll
+            libdetex.dll.a
             detex.h
-
-  create-release-archives:
-    name: Create release archives
-    needs: build
-    runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
-
-    steps:
-      - name: Download all artifacts
-        uses: actions/download-artifact@v4
-        with:
-          path: artifacts
-
-      - name: Create archives
-        run: |
-          cd artifacts
-          for dir in detex-*; do
-            if [ -d "$dir" ]; then
-              tar -czf "${dir}.tar.gz" -C "$dir" .
-              zip -r "${dir}.zip" "$dir"
-            fi
-          done
-
-      - name: Upload release archives
-        uses: actions/upload-artifact@v4
-        with:
-          name: release-archives
-          path: |
-            artifacts/*.tar.gz
-            artifacts/*.zip
