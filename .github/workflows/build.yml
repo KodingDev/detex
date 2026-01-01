@@ -44,9 +44,7 @@ jobs:
       - name: Configure CMake
         # For Linux ARM64, we tell CMake to use the cross-compiler
         run: |
-          cmake -B build \
-            -DBUILD_SHARED_LIBS=ON \
-            ${{ (matrix.os == 'linux' && matrix.arch == 'aarch64') && '-DCMAKE_C_COMPILER=aarch64-linux-gnu-gcc -DCMAKE_CXX_COMPILER=aarch64-linux-gnu-g++' || '' }}
+          cmake -B build -DBUILD_SHARED_LIBS=ON ${{ (matrix.os == 'linux' && matrix.arch == 'aarch64') && '-DCMAKE_C_COMPILER=aarch64-linux-gnu-gcc -DCMAKE_CXX_COMPILER=aarch64-linux-gnu-g++' || '' }}
 
       - name: Build
         run: cmake --build build --config Release
