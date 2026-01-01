@@ -32,7 +32,7 @@ set(detex_src
 	ktx.c
 	texture.c
 )
-add_library(detex STATIC ${detex_src})
+add_library(detex SHARED ${detex_src})
 target_compile_definitions(detex PUBLIC "DETEX_VERSION=\"${detex_VERSION}\"")
 target_sources(detex PUBLIC FILE_SET includes TYPE HEADERS FILES "detex.h")
 install(TARGETS detex EXPORT detex-targets FILE_SET includes)

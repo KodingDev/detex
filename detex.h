@@ -80,6 +80,11 @@ __BEGIN_DECLS
 #endif
 #define DETEX_RESTRICT __restrict
 
+#ifdef _MSC_VER
+#define strncasecmp _strnicmp
+#define strcasecmp _stricmp
+#endif
+
 /* Maximum uncompressed block size in bytes. */
 #define DETEX_MAX_BLOCK_SIZE 256
 
@@ -766,7 +771,7 @@ DETEX_API bool detexDecompressTextureTiled(const detexTexture *texture, uint8_t 
  * image buffer, with pixels stored row-by-row, converting into the given pixel
  * format.
  */
-DETEX_API bool detexDecompressTextureLinear(const detexTexture *texture, uint8_t *pixel_buffer,
+DETEX_HELPER_SHARED_EXPORT bool detexDecompressTextureLinear(const detexTexture *texture, uint8_t *pixel_buffer,
 	uint32_t pixel_format);
 
 

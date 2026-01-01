@@ -71,6 +71,31 @@ end:
 
 // Error handling.
 
+#ifdef _WIN32
+/* Windows implementation of vasprintf */
+int vasprintf(char **strp, const char *fmt, va_list ap) {
+    // Calculate the size required
+    int len = _vscprintf(fmt, ap);
+    if (len == -1) return -1;
+
+    size_t size = (size_t)len + 1;
+    char *str = (char *)malloc(size);
+    if (!str) return -1;
+
+    // Format the string into the allocated buffer
+    int r = vsprintf_s(str, size, fmt, ap);
+    if (r == -1) {
+        free(str);
+        return -1;
+    }
+    *strp = str;
+    return r;
+}
+
+/* Windows also often needs a strdup fix if using strict ISO C */
+#define strdup _strdup
+#endif
+
 static __thread char *detex_error_message = NULL;
 
 void detexSetErrorMessage(const char *format, ...) {
